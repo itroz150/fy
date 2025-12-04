@@ -1,0 +1,67 @@
+# req01
+SELECT people.id, people.first_name, people.last_name
+FROM people
+WHERE EXISTS (
+    SELECT 1
+    FROM transport.metro_usage_logs AS logs
+    JOIN transport.metro_stations AS stations ON logs.station_id = stations.id
+    WHERE logs.person_id = people.id
+        AND stations.name = 'Morgane Abeille'
+);
+
+# req02
+SELECT * FROM backup.street_logs
+EXCEPT
+SELECT * FROM public.street_logs;
+
+# req03
+SELECT * FROM public.street_logs
+INTERSECT
+SELECT * FROM backup.street_logs;
+
+# req04
+SELECT 'metro' AS place_type, COUNT(DISTINCT person_id) AS entries, station_id AS place_id
+FROM transport.metro_usage_logs
+GROUP BY station_id
+UNION
+SELECT 'shop' AS place_type, COUNT(DISTINCT person_id) AS entries, shop_id AS place_id
+FROM shop_entrance_logs
+GROUP BY shop_id
+ORDER BY entries DESC, place_id ASC, place_type DESC;
+
+# req05
+SELECT people.id AS person_id, people.first_name AS person_first_name, people.last_name AS person_last_name, 
+       logs.created_at, 'street' AS place, logs.street_id AS place_id
+FROM street_logs AS logs
+JOIN people ON logs.person_id = people.id
+WHERE logs.created_at >= '2059-12-03 17:00:00' AND logs.created_at <= '2059-12-03 22:00:00'
+UNION
+SELECT people.id AS person_id, people.first_name AS person_first_name, people.last_name AS person_last_name,
+       logs.created_at, 'metro' AS place, logs.station_id AS place_id
+FROM transport.metro_usage_logs AS logs
+JOIN people ON logs.person_id = people.id
+WHERE logs.created_at >= '2059-12-03 17:00:00' AND logs.created_at <= '2059-12-03 22:00:00'
+UNION
+SELECT people.id AS person_id, people.first_name AS person_first_name, people.last_name AS person_last_name,
+       logs.created_at, 'shop' AS place, logs.shop_id AS place_id
+FROM shop_entrance_logs AS logs
+JOIN people ON logs.person_id = people.id
+WHERE logs.created_at >= '2059-12-03 17:00:00' AND logs.created_at <= '2059-12-03 22:00:00'
+ORDER BY created_at, person_id;
+
+# req06
+SELECT * FROM (
+    SELECT person_id, validation, created_at
+    FROM (
+        SELECT person_id, validation, created_at
+        FROM transport.metro_usage_logs
+        WHERE created_at >= '2059-12-03 20:00:00' AND created_at <= '2059-12-03 22:00:00'
+        ORDER BY created_at ASC
+        LIMIT 10
+    ) AS recent_logs
+    UNION
+    SELECT person_id, validation, created_at
+    FROM transport.metro_usage_logs
+    WHERE created_at >= '2059-12-03 12:00:00' AND created_at <= '2059-12-03 14:00:00'
+) AS all_logs
+ORDER BY person_id;
